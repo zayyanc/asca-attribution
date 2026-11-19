@@ -1,5 +1,6 @@
-# Direct dependencies of the ASCA v0 scripts.
+# Direct dependencies.
 # scikit-learn is not imported anywhere in this repo.
+# jax and numpyro are used by the B2B NUTS fit in b2b/model.py.
 numpy
 pandas
 scipy
@@ -7,3 +8,5 @@ pyarrow
 matplotlib
 tabulate
 huggingface_hub
+jax
+numpyro
