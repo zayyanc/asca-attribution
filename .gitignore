@@ -1,0 +1,8 @@
+.venv/
+__pycache__/
+*.py[cod]
+
+# Large benchmark tables. Fetch with download_data.py; do not commit.
+data/*.parquet
+# huggingface_hub metadata written beside those files
+data/.cache/

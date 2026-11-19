@@ -1,0 +1,56 @@
+{
+  "dgp": {
+    "base_logit": -3.2,
+    "half_life_h": 168.0,
+    "window_h": 720.0,
+    "seed": 42,
+    "channels": {
+      "paid_search": {
+        "weight": 1.1,
+        "rate": 0.9,
+        "cost": 1.2
+      },
+      "social": {
+        "weight": 0.7,
+        "rate": 0.85,
+        "cost": 0.8
+      },
+      "display": {
+        "weight": 0.35,
+        "rate": 0.8,
+        "cost": 0.4
+      },
+      "email": {
+        "weight": 0.9,
+        "rate": 0.5,
+        "cost": 0.05
+      },
+      "organic_search": {
+        "weight": 0.8,
+        "rate": 0.6,
+        "cost": 0.0
+      },
+      "direct": {
+        "weight": 1.0,
+        "rate": 0.4,
+        "cost": 0.0
+      },
+      "referral": {
+        "weight": 0.5,
+        "rate": 0.3,
+        "cost": 0.1
+      }
+    }
+  },
+  "aggregate_true_contribution": {
+    "paid_search": 0.2638458361746517,
+    "social": 0.18563970726816093,
+    "display": 0.1120319854592672,
+    "email": 0.13129940317030322,
+    "organic_search": 0.14252646079751183,
+    "direct": 0.11070190338775113,
+    "referral": 0.053954703742353984
+  },
+  "conversion_rate": 0.0599,
+  "n_journeys": 500000
+}

@@ -1,0 +1,42 @@
+{'n_sub': 100000, 'n_conv': 5988, 'conv_rate_sub': 0.05988, 'conv_rate_full': 0.059876, 'n_touch': 269817}
+fitting ASCA v0 (latent agent A)
+  start 0: nlp=22461.37 success=True nit=52
+  start 1: nlp=22461.40 success=True nit=48
+  done in 159s; h=179.4 kappa=0.813
+fitting ASCA v0 ablation: no A
+  start 0: nlp=22461.32 success=True nit=28
+  start 1: nlp=22461.32 success=True nit=39
+  done in 27s; h=179.5 kappa=0.814
+                      model       MAE     MaxAE  Spearman   Kendall  MAE_vs_subsample_truth  per_journey_MAE  90%_interval_coverage_of_truth
+9    ASCA v0 ablation: no A  0.005674  0.009791  1.000000  1.000000                0.004682         0.006945                        1.000000
+8  ASCA v0 (latent agent A)  0.005677  0.009797  1.000000  1.000000                0.004684         0.006945                        1.000000
+6            Shapley set-CR  0.016030  0.030831  0.964286  0.904762                0.015274         0.048432                        0.428571
+0                Last-click  0.019824  0.055136  0.892857  0.809524                0.019375         0.103224                             NaN
+3       Time-decay (h=168h)  0.021586  0.055848  0.892857  0.809524                0.021137         0.028201                             NaN
+5     Shapley-Zhao (counts)  0.022264  0.055494  0.892857  0.809524                0.021815         0.051632                             NaN
+4   Position-based 40/20/40  0.022294  0.056755  0.892857  0.809524                0.021845         0.058940                             NaN
+2                    Linear  0.023000  0.057201  0.892857  0.809524                0.022551         0.048851                             NaN
+7            Markov removal  0.023614  0.064435  0.892857  0.809524                0.023280         0.053203                        0.285714
+1               First-click  0.024192  0.060439  0.892857  0.809524                0.023669         0.169611                             NaN
+                          paid_search  social  display   email  organic_search  direct  referral
+Last-click                     0.2248  0.1877   0.1672  0.1176          0.1408  0.0959    0.0661
+First-click                    0.2034  0.1951   0.1707  0.1207          0.1428  0.0970    0.0703
+Linear                         0.2145  0.1950   0.1692  0.1168          0.1399  0.0966    0.0679
+Time-decay (h=168h)            0.2201  0.1935   0.1679  0.1165          0.1397  0.0965    0.0658
+Position-based 40/20/40        0.2139  0.1929   0.1688  0.1183          0.1416  0.0966    0.0680
+Shapley-Zhao (counts)          0.2106  0.1907   0.1675  0.1192          0.1411  0.0996    0.0713
+Shapley set-CR                 0.2346  0.1905   0.1429  0.1105          0.1436  0.1046    0.0733
+Markov removal                 0.1994  0.1836   0.1718  0.1231          0.1429  0.1027    0.0765
+ASCA v0 (latent agent A)       0.2540  0.1875   0.1195  0.1256          0.1492  0.1064    0.0578
+ASCA v0 ablation: no A         0.2541  0.1875   0.1194  0.1256          0.1492  0.1064    0.0579
+Ground truth (500k)            0.2638  0.1856   0.1120  0.1313          0.1425  0.1107    0.0540
+Ground truth (subsample)       0.2617  0.1864   0.1119  0.1286          0.1444  0.1121    0.0549
+               Markov removal [5%,95%] Shapley set-CR [5%,95%] ASCA v0 (latent agent A) [5%,95%] ASCA v0 ablation: no A [5%,95%]
+paid_search             [0.196, 0.202]          [0.206, 0.248]                    [0.188, 0.564]                  [0.241, 0.270]
+social                  [0.181, 0.188]          [0.170, 0.214]                   [-0.030, 0.361]                  [0.174, 0.204]
+display                 [0.169, 0.174]          [0.126, 0.158]                   [-0.541, 0.216]                  [0.091, 0.136]
+email                   [0.119, 0.125]          [0.093, 0.126]                    [0.099, 0.262]                  [0.114, 0.136]
+organic_search          [0.141, 0.146]          [0.129, 0.158]                    [0.112, 0.332]                  [0.137, 0.160]
+direct                  [0.101, 0.105]          [0.093, 0.120]                    [0.085, 0.268]                  [0.096, 0.116]
+referral                [0.074, 0.079]          [0.063, 0.090]                   [-0.188, 0.118]                  [0.047, 0.069]
+true incremental total (subsample): 2113.058133323564 {'ASCA v0 (latent agent A)': 2165.8738267405124, 'ASCA v0 ablation: no A': 2166.091337135795}

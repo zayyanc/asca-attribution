@@ -1,0 +1,9 @@
+# Direct dependencies of the ASCA v0 scripts.
+# scikit-learn is not imported anywhere in this repo.
+numpy
+pandas
+scipy
+pyarrow
+matplotlib
+tabulate
+huggingface_hub
