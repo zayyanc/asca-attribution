@@ -1,0 +1,53 @@
+quality,channel,treatment,p_hat
+near_perfect,paid_search,"touch log, regression-calibrated on the gold panel",0.7736443458557449
+near_perfect,linkedin,"account-level impressions, calibrated on the gold panel",0.19330843807698525
+near_perfect,content,"touch log, regression-calibrated on the gold panel",0.588842336007096
+near_perfect,events,"touch log, regression-calibrated on the gold panel",0.3996755884351863
+near_perfect,sdr,"touch log, regression-calibrated on the gold panel",0.9241192345478871
+near_perfect,partner,"touch log, regression-calibrated on the gold panel",0.690937647230553
+near_perfect,review,"touch log, regression-calibrated on the gold panel",0.30998483719660735
+near_perfect,organic,"touch log, regression-calibrated on the gold panel",0.48888201664866304
+near_perfect,plg,"touch log, regression-calibrated on the gold panel",0.8301315695947966
+near_perfect,abm,"account-level impressions, calibrated on the gold panel",0.19443537641334185
+near_perfect,llm_research,gold-panel calibration plus the account holdout (touch log is not used),0.05202233695106353
+near_perfect,wom,unidentified without an experiment,0.0694107082915436
+near_perfect,podcast,"touch log, regression-calibrated on the gold panel",0.18453172163616793
+good,paid_search,"touch log, regression-calibrated on the gold panel",0.5443856698010754
+good,linkedin,"account-level impressions, calibrated on the gold panel",0.10988039305791313
+good,content,"touch log, regression-calibrated on the gold panel",0.3902788659934052
+good,events,"touch log, regression-calibrated on the gold panel",0.324570369458017
+good,sdr,"touch log, regression-calibrated on the gold panel",0.7819240009528591
+good,partner,"touch log, regression-calibrated on the gold panel",0.5692223793333496
+good,review,"touch log, regression-calibrated on the gold panel",0.21949498040772328
+good,organic,"touch log, regression-calibrated on the gold panel",0.34208589838886155
+good,plg,"touch log, regression-calibrated on the gold panel",0.7290566102156586
+good,abm,"account-level impressions, calibrated on the gold panel",0.11716700890419288
+good,llm_research,gold-panel calibration plus the account holdout (touch log is not used),0.018313921270337465
+good,wom,unidentified without an experiment,0.05791106962441565
+good,podcast,unidentified without an experiment,0.10124783343584745
+degraded,paid_search,"touch log, regression-calibrated on the gold panel",0.24240954885254548
+degraded,linkedin,"account-level impressions, calibrated on the gold panel",0.08141187940539524
+degraded,content,"touch log, regression-calibrated on the gold panel",0.2260969432896131
+degraded,events,"touch log, regression-calibrated on the gold panel",0.19547922912395205
+degraded,sdr,"touch log, regression-calibrated on the gold panel",0.6467421768022672
+degraded,partner,"touch log, regression-calibrated on the gold panel",0.41259812407930774
+degraded,review,"touch log, regression-calibrated on the gold panel",0.17988396512285934
+degraded,organic,"touch log, regression-calibrated on the gold panel",0.20005077618233033
+degraded,plg,"touch log, regression-calibrated on the gold panel",0.6468125089959329
+degraded,abm,"account-level impressions, calibrated on the gold panel",0.058298682073143926
+degraded,llm_research,gold-panel calibration plus the account holdout (touch log is not used),0.014738302735517583
+degraded,wom,unidentified without an experiment,0.0517433912109425
+degraded,podcast,unidentified without an experiment,0.06472796416300632
+heavy,paid_search,unidentified without an experiment,0.12406204648868745
+heavy,linkedin,"account-level impressions, calibrated on the gold panel",0.046287212341508885
+heavy,content,unidentified without an experiment,0.10924571397164087
+heavy,events,"touch log, regression-calibrated on the gold panel",0.15153693994290734
+heavy,sdr,"touch log, regression-calibrated on the gold panel",0.47851306804266114
+heavy,partner,"touch log, regression-calibrated on the gold panel",0.4418425617697793
+heavy,review,unidentified without an experiment,0.07097000982730971
+heavy,organic,unidentified without an experiment,0.07966794753373875
+heavy,plg,"touch log, regression-calibrated on the gold panel",0.6262799026355357
+heavy,abm,"account-level impressions, calibrated on the gold panel",0.03673240605180904
+heavy,llm_research,gold-panel calibration plus the account holdout (touch log is not used),0.014463336596252709
+heavy,wom,unidentified without an experiment,0.04504588316993527
+heavy,podcast,unidentified without an experiment,0.051401510003885216

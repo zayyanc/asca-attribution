@@ -1,76 +1,297 @@
-# ASCA v0: Agentic Structural Causal Attribution
+# ASCA-B2B: account-level attribution for B2B motions
 
-ASCA is a marketing attribution model for a world in which AI assistants influence, and sometimes complete, the purchase. This note has two parts. The first is for marketers and executives. The second is the technical reference: the model, the tests, and how to reproduce them.
+ASCA (Agentic Structural Causal Attribution) asks, for each channel, what would have happened to pipeline and revenue without it. This version is built for B2B go-to-market: the account is the unit, a buying committee sits under that account, the funnel runs for months, and a lot of influence never shows up in the CRM.
 
-Every number in the technical section comes from `run_benchmark.py` and `run_simulation.py`. The raw output is in `results/`.
+The note has two parts. The first is for marketers and executives. The second is the technical record, including the consumer v0 benchmark as a secondary section. Every B2B number below comes from `run_b2b.py` (seed 17, 4,000 accounts). The tables are in `results/b2b/`.
 
 ## Contents
 
 **For marketers and executives**
 
-- [The problem](#the-problem)
+- [The B2B problem](#the-b2b-problem)
 - [What ASCA does differently](#what-asca-does-differently)
-- [What the first results showed](#what-the-first-results-showed)
-- [An honest caveat](#an-honest-caveat)
-- [What comes next](#what-comes-next)
+- [What the B2B test showed](#what-the-b2b-test-showed)
+- [When tracking falls apart](#when-tracking-falls-apart)
+- [Limits, and the earlier consumer test](#limits-and-the-earlier-consumer-test)
 
 **Technical reference**
 
-- [The model](#the-model)
-- [How credit is assigned](#how-credit-is-assigned)
-- [Baselines](#baselines)
-- [Data](#data)
-- [Download and reproduce](#download-and-reproduce)
-- [Results](#results)
-- [Assumptions, limitations, and v1](#assumptions-limitations-and-v1)
-- [Dataset attribution](#dataset-attribution)
+- [No public B2B ground truth](#no-public-b2b-ground-truth)
+- [The account-level model](#the-account-level-model)
+- [Imperfect tracking](#imperfect-tracking)
+- [How credit is scored](#how-credit-is-scored)
+- [B2B baselines](#b2b-baselines)
+- [Simulation](#simulation)
+- [Reproduce](#reproduce)
+- [B2B results](#b2b-results)
+- [Assumptions and limitations](#assumptions-and-limitations)
+- [Consumer v0 technical record](#consumer-v0-technical-record)
 
 ---
 
 ## For marketers and executives
 
-### The problem
+### The B2B problem
 
-A customer used to leave a trail of clicks: an ad, a search, an email, a visit. The last click before the sale was easy to see, so last-click attribution handed that sale to whatever showed up last.
+A B2B deal is not a click that turns into an order. It is an account: several people, with different jobs, over several months. Someone on the buying team reads a review, sits in on a webinar, asks an AI assistant to build a shortlist, and only later does a sales rep log a meeting. The CRM then stores a single "lead source," or a W-shaped report that hands fixed slices of the deal to the first touch, the lead-creation touch, and the opportunity-creation touch.
 
-That trail is breaking. AI assistants and shopping agents now recommend products, compare them, and sometimes check out on the customer's behalf. Those steps often leave no click. The assistant can be the reason the sale happened, while the click log only shows a final checkout, or a channel that merely happened to be last. Last-click then credits the last visible step. The thing that actually caused the sale gets nothing.
+Those reports answer "what was written down, and where did it sit in the sequence?" They do not answer "what caused the pipeline, and what caused the revenue?"
+
+Three things make that gap large:
+
+- **Targeting.** SDRs and ABM spend their time on accounts that were already a good fit. Those accounts win more often. A report that counts touches then gives SDR and ABM credit for a win that the fit would have produced anyway.
+- **AI research with no trail.** Buyers use assistants to compare vendors. The research draws on your content, on review sites, and on mentions that never send a referrer. The CRM may later show an "AI-sourced" demo request or a self-reported "ChatGPT." That label is a record of the booking, not the thing that created the demand.
+- **Sales activity after the deal exists.** Calls and meetings multiply once an opportunity is open, especially on attractive accounts. Last touch then points at the last sales activity and treats it as the cause of the revenue.
 
 ### What ASCA does differently
 
-Standard methods count touches along the path and give the sale to a position in that path: the last touch, the first touch, or a share of every touch.
+ASCA rolls the committee up to the account. A touch on an economic buyer counts more than the same touch on an end user. It adjusts for the firmographics that drive both targeting and win rates: fit, intent, whether you already know the account, and segment. It asks, for each channel, what would have happened to pipeline dollars and to closed-won dollars if that channel's exposure were removed and everything else, including the account's firmographics, stayed as it was.
 
-ASCA asks a different question of each channel: **what would have happened to this sale if this channel had not been there?** Credit goes to the channels that change the outcome. A step that appears in the log but does not change the sale, including an AI checkout that only records a decision already made, gets no credit. A channel that never produces a click can still receive credit when there is a record that it was shown, for example an impression inside an AI answer.
+The production log is treated as a noisy measurement of the exposure that actually happened, not as the exposure itself. A small measured panel is used to learn how often each channel survives into the log. LinkedIn and ABM also arrive as account-level impression totals, which do not depend on a cookie. Channels that leave almost no touch, in this test LLM research, are pinned with a randomized account holdout rather than with a referrer that is not there. Word of mouth has neither a usable touch log nor a holdout, so the model refuses to invent a share for it.
 
-### What the first results showed
+Sales calls after the decision date can affect whether an open opportunity closes. They are not allowed to create the opportunity. The AI-sourced flag is used only as a clue that an assistant was involved. It is not treated as a channel that spent money.
 
-Two tests, both with a known right answer.
+### What the B2B test showed
 
-**On a public benchmark of made-up shopping journeys, ASCA was the most accurate method, and it ranked the channels in exactly the right order.** The next-best method was clearly behind. The usual rules, including last-click, were further behind, and they did not get the ranking right. They gave too much credit to channels that show up often but matter less (display and referral), and they shorted paid search by 3 to 6 percentage points. Sale by sale, ASCA's split of credit was 4 to 25 times closer to the truth than those other methods. The uncertainty range ASCA reported contained the true credit for every channel. Ranges from the two usual methods we checked the same way were tight, and they missed the truth on most channels.
+The test is a simulated book of 4,000 accounts (average 2.37 contacts, average deal size about $18,972). 1,374 accounts opened an opportunity (34.35%). 791 of those closed won (57.57% of opportunities). On 65.94% of opportunities a buyer had used an assistant to research vendors. On 27.29% the assistant also booked the demo, which is the observed "AI-sourced" flag. The right answer is known, because the simulation was built from an explicit causal model.
 
-**On a separate test where an AI assistant sometimes takes part in the purchase, ASCA gave no credit to a checkout step that did not cause the sale, and it did credit an invisible AI-answer channel.** That invisible channel is worth about 20% of the true credit. Last-click gave it nothing, and gave the non-causal checkout step 37.5% of the credit. Other touch-counting rules did the same kind of thing. A method that scores which combination of channels appeared put about 26% on that checkout step, a method that favors recent touches put about 18% there, and a method that follows the usual order of steps put about 14% there. None of them credited the invisible channel.
+At the **good** tracking level (cookies and CRM both imperfect, but not broken), on a 0-to-1 split of credit:
 
-| | Last-click | ASCA |
+| | Pipeline, average absolute error | Pipeline, rank agreement | Revenue, average absolute error | Revenue, rank agreement |
+|---|---:|---:|---:|---:|
+| ASCA-B2B | 0.0250 | 0.9393 | 0.0262 | 0.9143 |
+| Lead source | 0.0427 | 0.4679 | 0.0423 | 0.4571 |
+| W-shaped | 0.0472 | 0.2964 | 0.0475 | 0.3357 |
+| Last touch | 0.0596 | 0.2036 | 0.0855 | 0.2509 |
+
+Rank agreement is the Spearman correlation of the channel split with the true split. 1 means the order of channels matches exactly.
+
+What the usual reports get wrong, at that same good tracking level:
+
+- **Last touch** gave the AI-sourced flag 0.2724 of pipeline credit. The true share is 0. ASCA gave it 0. On revenue, last touch gave post-decision sales 0.8094 of the credit. The true sales share of revenue is 0.2154. ASCA gave sales 0.1332, and 0 of pipeline, which is the true pipeline share.
+- **W-shaped** gave SDR 0.2147 of pipeline credit and 0.2243 of revenue credit. The true shares are 0.0872 and 0.0592. ASCA gave SDR 0.1205 and 0.1087. Dropping the firmographic adjustment made this worse: SDR's pipeline share rose to 0.1532 and its revenue share to 0.1439. ABM moved the same way (pipeline 0.1110 without the adjustment, 0.0943 with it, truth 0.0577).
+- **Every path rule** gave LLM research at most 0.0052 of pipeline credit. The true share is 0.1765. ASCA, using the holdout rather than a referrer, gave it 0.1301. Word of mouth (truth 0.0166) and, at this tracking level, podcasts (truth 0.0176) stayed at 0, because the model had no touch log worth using and no experiment.
+
+Near-perfect tracking is tighter still: pipeline error 0.0183 and revenue error 0.0182, with rank agreement 0.9250 and 0.9357. The 90% intervals from the posterior covered the truth for 73.33% of pipeline channels and 86.67% of revenue channels. Coverage on the channels the model could actually see was 76.92% and 92.31%. The misses are real: content's pipeline interval at good tracking was [-0.0172, 0.2191] against a truth of 0.2287, and the revenue interval for sales at near-perfect tracking was [0.0458, 0.1808] against 0.2154.
+
+### When tracking falls apart
+
+The same accounts were scored four times. Only the production log changed. The truth did not.
+
+| Tracking | Pipeline error, ASCA | Pipeline error, best path rule in that row's set | Revenue error, ASCA | Revenue error, last touch |
+|---|---:|---:|---:|---:|
+| Near perfect | 0.0183 | 0.0407 (linear) | 0.0182 | 0.0892 |
+| Good | 0.0250 | 0.0427 (lead source) | 0.0262 | 0.0855 |
+| Degraded | 0.0224 | 0.0546 (lead source) | 0.0281 | 0.0736 |
+| Heavy | 0.0644 | 0.0593 (lead source) | 0.0577 | 0.0773 |
+
+"Best path rule" above is the lowest average absolute error among lead source, W-shaped, Z-shaped, linear, time-decay, last touch, Markov, and set-rate Shapley. At heavy tracking the raw-touch version of ASCA (0.0591) beat the full model (0.0644) on pipeline.
+
+That jump is the channels that became invisible. With heavy loss, paid search, content, reviews, organic, podcasts, and word of mouth no longer had a usable touch log, and none of them had a holdout. ASCA set their pipeline credit to 0. Content's true share is 0.2287, so that single zero is most of the extra error. The intervals on those channels collapsed to 0 as well, which does **not** cover the truth. Intervals on the channels that remained visible (CRM-logged SDR, product-led signups, partner, events, plus LinkedIn and ABM via impression totals, plus LLM research via the holdout) still covered the truth 75% of the time. LinkedIn and ABM did not disappear, because the impression file does not depend on the cookie. LLM research did not disappear, because the holdout does not depend on a referrer. Word of mouth was unidentified at every tracking level. There is no experiment for it in this test, and its estimated keep rate never cleared the bar (0.0694 even when tracking was near perfect).
+
+Path rules degrade more quietly and more misleadingly. Their error rises, and the rank agreement falls toward 0 (lead source's pipeline rank agreement at heavy tracking is -0.0286). They keep assigning the deals they can still see to SDR, to whatever lead source the form recorded, and to the last sales call.
+
+### Limits, and the earlier consumer test
+
+This B2B test was built by us, in the same family of formulas the model uses. The panel that calibrates the measurement stays high quality even when production tracking does not. The holdout is a real randomized suppression, not an observational trick. Those are favorable conditions. The heavy-tracking result is the caution: without an experiment or an impression file, a dark channel is not identified, and a confident 0 is the wrong interval.
+
+An earlier consumer benchmark, on a public synthetic journey set and a separate agent simulation, is summarized in the technical record. In short: on that public set ASCA was the most accurate method and ranked the channels exactly right, and the benchmark favors ASCA's formula, which the write-up says plainly. In the consumer agent simulation, ASCA gave no credit to a checkout step that did not cause the sale, and it credited an invisible AI-answer channel worth about 20% of the true credit. Last touch gave that checkout step 37.5%.
+
+| | Last touch | ASCA |
 |---|---|---|
 | Credit to the checkout step that did not cause the sale | 37.5% | none |
 | Credit to the invisible AI-answer channel (true share about 20%) | none | credited, close to the true share |
 
-### An honest caveat
-
-The public benchmark favors ASCA's shape. Its right answer was built from the same kind of formula ASCA assumes: an ad's effect fades with time, extra exposures matter less once someone has already seen a lot, and the chance of buying follows that pattern. ASCA had to learn the fade rate and how quickly extra exposures wear out, but the family of the formula matches the test. Errors on real data should be larger. The next step is to test cases where that formula is wrong.
-
-The assistant test was built by us. It uses that same formula, it has no hidden influence we failed to measure, and the checkout flag never turns on by mistake. Those are optimistic conditions.
-
-### What comes next
-
-1. Tie the overall totals to lift experiments and marketing-mix results, so the grand total stays honest when something unmeasured is pushing both exposure and sales.
-2. Replace today's rough uncertainty ranges with a fuller fit, and stop those ranges from blowing up when the data cannot tell two explanations apart.
-3. Describe the assistant in more than one state: a person shopping, a person helped by AI, or the AI completing the purchase. Use several noisy clues, and always say how much of a channel's credit ran through the assistant.
-4. Let each channel fade on its own, and, when the time of the sale is known, ignore touches that happen after it.
-5. Stress-test the model when the formula is wrong, and run it on a large real dataset (Criteo) where nobody knows the right answer, to see whether it stays stable.
-
 ---
 
 ## Technical reference
+
+### No public B2B ground truth
+
+There is no public B2B, account-level, multi-touch dataset with causal ground truth that this benchmark can score against. Criteo's public attribution set is consumer display traffic, hashed, with no ground truth. A 2025 causal-attribution paper (arXiv:2512.21211) reports the same gap after a long search and falls back to simulation. Published B2B comparisons that quote enterprise logs do not release the accounts. Amazon's RCT ground truth for its own ads is internal. The Hugging Face set `lucianfialho/synthetic-attribution-benchmark` (CC BY 4.0) is the consumer journey benchmark already in this repo. The B2B numbers here are from the seeded simulation only.
+
+### The account-level model
+
+An account \(a\) has firmographics \(Z_a\): ICP fit, intent, an existing-relationship flag, and segment indicators for mid-market and enterprise. Contacts carry roles. Role weights are economic buyer 1.30, champion 1.15, technical evaluator 0.80, end user 0.40. Marketing exposure is the role-weighted, decayed sum of touches before the decision date (day 110), with half-life 45 days:
+
+\[
+E_{ac} = \sum_{\text{touches of } c} w_{\text{role}} \exp\left(-\frac{\ln 2}{45}(110 - t)\right), \qquad s_{ac} = \frac{E_{ac}}{1 + E_{ac}}.
+\]
+
+A latent agent \(A\) (the buyer used an assistant to build the shortlist) has
+
+\[
+\operatorname{logit} P(A=1 \mid s, Z) = a_0 + g \cdot s_{\text{agent}} + z_A \cdot Z,
+\]
+
+with loadings on content, review sites, LLM research, and podcasts. The AI-executed demo flag \(M\) is a descendant: it fires only if \(A=1\) and the account becomes an opportunity, with probability 0.42. IAB class is then human-owned (\(A=0\)), AI-assisted (\(A=1\), no executed demo), or AI-executed (\(M=1\)). \(M\) is a proxy in the likelihood. It is not an exposure, except in the misuse ablation.
+
+Opportunity and win, with \(A\) marginalized:
+
+\[
+\begin{aligned}
+P(Y=1 \mid s, Z) &= (1-\pi)\,\sigma(\eta_Y) + \pi\,\sigma(\eta_Y + d_Y), \\
+P(W=1 \mid Y=1, s, Z, s_{\text{sales}}) &= (1-\pi)\,\sigma(\eta_W) + \pi\,\sigma(\eta_W + d_W).
+\end{aligned}
+\]
+
+\(\eta_Y\) does not include sales. \(\eta_W\) includes \(\delta \cdot s_{\text{sales}}\). Sales intensity has a firmographic part and a large idiosyncratic part, so \(\delta\) is not the same coefficient as ICP. Post-decision calls are what the path rules count. The win likelihood uses a CRM effort score, a noisy reading of that intensity on opportunities the CRM recorded. Pipeline value of a coalition is \(\mathrm{ACV} \times P(Y=1 \mid do)\). Revenue value is \(\mathrm{ACV} \times P(Y=1 \mid do) \times P(W=1 \mid Y=1, do)\). Credit is the exact Shapley value of that function over the 14 channels (13 marketing channels plus sales). Shares are the channels' fractions of total incremental dollars. `ai_sourced` is scored as well and has truth 0.
+
+The fitted model is this same two-equation SCM. Channel effects, agent loadings, and \(\delta\) are constrained to be non-negative. Priors are \(\mathcal{N}(0, 5^2)\) on intercepts, \(\mathcal{N}(0, 2^2)\) on effects, and \(\mathcal{N}(0, 1.5^2)\) on the proxy log-odds. The full model at each tracking level was sampled with NUTS in NumPyro: 100 warmup steps, 50 draws, one chain, 0 divergences. Ablations (no firmographics, touch log only, and the misuse that puts the AI-sourced flag in the opportunity equation) are MAP only, so they have no posterior intervals.
+
+### Imperfect tracking
+
+The truth is simulated once. Four production logs are then drawn with quality \(q \in \{1.00, 0.72, 0.42, 0.18\}\) (near perfect, good, degraded, heavy). A true touch of channel \(c\) is kept with probability \(\text{base}_c \times (\text{floor} + (1-\text{floor}) q)\). Floors are 0.08 for cookie channels, 0.30 for offline, 0.80 for CRM-native channels (SDR, partner, product-led, sales), and 0 for dark channels. Kept touches match the right account with probability \(0.50 + 0.45q\), land on a random wrong account with probability \(0.06(1-q)\), and are otherwise dropped. The lead-source field falls back to a biased self-report (events, SDR, podcasts, reviews, and a ChatGPT label) with probability \(0.25 + 0.55(1-q)\). MQA dates are often missing and late. Opportunity and win flags are dropped with probabilities that rise as \(q\) falls. LinkedIn and ABM also emit a noisy account-level impression total; the noise grows as \(q\) falls.
+
+On a 10% gold panel the production exposure and the true exposure are both observed. That panel is used only to fit, per channel,
+
+\[
+E^{\text{true}} \approx \alpha + \beta E^{\text{obs}} + \gamma E^{\text{agg}} + \theta \cdot Z
+\]
+
+and to apply the fit to every account. It is not copied into the outcome regression as the true dose. Randomized holdouts (8% of accounts for ABM, a disjoint 8% for LLM research) set that channel's reconstructed exposure to 0. A channel whose gold-panel keep rate is below 0.15, and which has neither an impression total nor the LLM holdout, is set to zero exposure and called unidentified. In this run that is:
+
+| Channel | Near perfect | Good | Degraded | Heavy |
+|---|---|---|---|---|
+| Word of mouth | unidentified | unidentified | unidentified | unidentified |
+| Podcast | touch log (keep rate 0.1845) | unidentified (0.1012) | unidentified (0.0647) | unidentified (0.0514) |
+| Paid search, content, review, organic | calibrated touch log | calibrated touch log | calibrated touch log | unidentified |
+| LinkedIn, ABM | impression totals | impression totals | impression totals | impression totals |
+| LLM research | holdout, not the touch log | holdout | holdout | holdout |
+| SDR, partner, product-led, events | calibrated touch log | calibrated touch log | calibrated touch log | calibrated touch log |
+
+Keep rates in parentheses are the gold-panel estimates \(p\) from `results/b2b/identification.csv`. The touch log for LLM research is never used, even when a few referrals survive (estimated keep rate 0.0520 at near-perfect tracking).
+
+Unidentified channels get a point share of 0 and a posterior interval that collapses to 0, because the value function does not depend on a coefficient that multiplies a column of zeros. That interval is not a calibrated statement of ignorance. Overall 90% coverage and coverage on identified channels are both reported. At heavy tracking the overall pipeline coverage is 0.4667 and the identified-channel coverage is 0.7500.
+
+### How credit is scored
+
+Truth shares use each account's true saturated exposure and its structural sales intensity, including the intensity a non-opportunity would have fielded. Published ASCA shares use the reconstructed exposures and a sales intensity that is the logged effort score on recorded opportunities and the firmographic prediction elsewhere. Both are normalized by total incremental dollars, so the comparison is a share vector, not a dollar total. Path rules are scored the same way: on each CRM-visible opportunity or win, the rule splits that account's ACV across observed touches, the dollars are summed, and the vector is normalized. Bootstrap intervals for path rules resample accounts (24 resamples, 5th and 95th percentiles).
+
+### B2B baselines
+
+All of these see only the production log for that tracking level. They do not see the gold panel, the holdouts, firmographics, or true exposures.
+
+- **Lead source.** 100% of the deal to the CRM lead-source field.
+- **Last touch.** Last observed touch before day 110 for pipeline; last observed touch in the whole log for revenue.
+- **W-shaped.** 30% first touch, 30% the touch nearest the CRM MQA date, 30% last touch before day 110, 10% across the other touches.
+- **Z-shaped / full path.** 20% on first, lead, opportunity, and last touch, and 20% across the rest.
+- **Linear and time-decay.** Time-decay uses the 45-day half-life, which matches the simulation and favors that rule.
+- **Markov removal and set-rate Shapley.** The v0 implementations, on the observed path, with per-account credit dollar-weighted. Set-rate Shapley uses \(v(\emptyset) = 0\).
+
+The touch-only ASCA ablation is the same outcome model fit to raw observed exposure, with no calibration, no impression totals, and no holdout column. The no-firmographics ablation keeps the measurement layer and drops \(Z\) from the outcome equations.
+
+### Simulation
+
+`b2b/simulate.py` documents the coefficients. Marketing touches are Poisson, with extra rate for SDR, ABM, and LinkedIn on high-ICP, high-intent, and enterprise accounts. ABM is suppressed on its holdout and LLM research on its holdout, before any outcomes are drawn. Opportunity and win are the two structural stages. MQA and SQL dates are operational timestamps for the path rules (MQA is the day of the second marketing touch; SQL is seven days before the decision on opportunities). They are not extra structural equations. A continuous-time hazard is not fit. The decision date is fixed at day 110 so "before the opportunity" is well defined; close is day 160 for wins. The window is 180 days.
+
+Ground-truth pipeline share for sales is 0 (numerical value \(1.7 \times 10^{-17}\) in this run). Incremental dollars, summing Shapley over accounts, were 22,612,563.95 of pipeline and 16,713,952.70 of revenue. IAB counts across all accounts: human-owned 2,037, AI-assisted 1,588, AI-executed 375.
+
+Committed tables, regenerated by the script: `data/b2b/accounts.parquet`, `contacts.parquet`, `touches_true.parquet`, `touches_observed_good.parquet` (the good tracking log only; the other three logs are redrawn from the seed), and `exposure_true.parquet`.
+
+### Reproduce
+
+```bash
+python -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt
+python run_b2b.py --n 4000 --seed 17 --method nuts --nuts-warmup 100 --nuts-samples 50 --boot 24
+```
+
+`requirements.txt` adds `jax` and `numpyro` to the v0 list. The run that produced these tables used NumPyro 0.22 and JAX 0.12. If NUTS diverges on more than 10% of draws, or fails to import, `fit_asca` falls back to a Laplace approximation at the MAP and records that in the fit note. This run had 0 divergences at every tracking level. Wall time on this machine was about 29 minutes, most of it the Shapley values on posterior draws.
+
+The consumer benchmark is unchanged: `python download_data.py` then `python run_benchmark.py 100000` and `python run_simulation.py`. Do not expect to re-run those for the numbers in the consumer section; they are the completed v0 outputs.
+
+### B2B results
+
+Average absolute error (MAE) and Spearman rank correlation. Full rows, including MaxAE, Kendall, and both coverages, are in `results/b2b/scores.md`.
+
+**Pipeline**
+
+| Tracking | ASCA | ASCA, no firmographics | ASCA, touch log only | Lead source | W-shaped | Last touch | Linear |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Near perfect | 0.0183 | 0.0191 | 0.0417 | 0.0413 | 0.0444 | 0.0535 | 0.0407 |
+| Good | 0.0250 | 0.0257 | 0.0599 | 0.0427 | 0.0472 | 0.0596 | 0.0463 |
+| Degraded | 0.0224 | 0.0257 | 0.0559 | 0.0546 | 0.0556 | 0.0621 | 0.0549 |
+| Heavy | 0.0644 | 0.0722 | 0.0591 | 0.0593 | 0.0660 | 0.0735 | 0.0667 |
+
+Spearman for ASCA pipeline: 0.9250, 0.9393, 0.9000, 0.2857. For lead source: 0.5393, 0.4679, 0.1714, −0.0286.
+
+**Revenue**
+
+| Tracking | ASCA | ASCA, no firmographics | ASCA, touch log only | Lead source | W-shaped | Z-shaped | Last touch | Linear |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Near perfect | 0.0182 | 0.0199 | 0.0349 | 0.0516 | 0.0488 | 0.0338 | 0.0892 | 0.0324 |
+| Good | 0.0262 | 0.0244 | 0.0486 | 0.0423 | 0.0475 | 0.0368 | 0.0855 | 0.0367 |
+| Degraded | 0.0281 | 0.0312 | 0.0500 | 0.0472 | 0.0499 | 0.0413 | 0.0736 | 0.0437 |
+| Heavy | 0.0577 | 0.0599 | 0.0521 | 0.0583 | 0.0567 | 0.0521 | 0.0773 | 0.0543 |
+
+At good tracking, dropping firmographics has a slightly lower revenue MAE (0.0244 against 0.0262) and a slightly higher Spearman (0.9250 against 0.9143). The share table shows what that average hides: SDR and ABM are further from the truth without the adjustment. The misuse ablation, which puts the AI-sourced flag into the opportunity equation while the reported share for that flag stays 0, raised pipeline MAE from 0.0250 to 0.0318 and lowered revenue MAE from 0.0262 to 0.0239. It is not a better account of the flag.
+
+**Channel shares at good tracking**
+
+Pipeline:
+
+| Channel | Truth | ASCA | No firmographics | W-shaped | Last touch | Lead source |
+|---|---:|---:|---:|---:|---:|---:|
+| paid_search | 0.1053 | 0.1303 | 0.1228 | 0.1394 | 0.1170 | 0.0936 |
+| linkedin | 0.0843 | 0.0905 | 0.1162 | 0.0565 | 0.0431 | 0.0803 |
+| content | 0.2287 | 0.1248 | 0.1243 | 0.1691 | 0.1343 | 0.1516 |
+| events | 0.0276 | 0.0249 | 0.0242 | 0.0284 | 0.0206 | 0.0629 |
+| sdr | 0.0872 | 0.1205 | 0.1532 | 0.2147 | 0.1810 | 0.1763 |
+| partner | 0.0210 | 0.0423 | 0.0206 | 0.0383 | 0.0360 | 0.0608 |
+| review | 0.0761 | 0.1202 | 0.0633 | 0.0288 | 0.0225 | 0.0517 |
+| organic | 0.0384 | 0.0499 | 0.0006 | 0.0711 | 0.0588 | 0.0662 |
+| plg | 0.0629 | 0.0722 | 0.0645 | 0.0748 | 0.0568 | 0.0653 |
+| abm | 0.0577 | 0.0943 | 0.1110 | 0.0317 | 0.0194 | 0.0293 |
+| llm_research | 0.1765 | 0.1301 | 0.1993 | 0.0041 | 0.0017 | 0.0048 |
+| wom | 0.0166 | 0 | 0 | 0.0072 | 0.0018 | 0.0134 |
+| podcast | 0.0176 | 0 | 0 | 0.0065 | 0.0011 | 0.0411 |
+| sales_ae | 0 | 0 | 0 | 0.0437 | 0.0336 | 0.0619 |
+| ai_sourced | 0 | 0 | 0 | 0.0856 | 0.2724 | 0.0409 |
+
+Revenue:
+
+| Channel | Truth | ASCA | No firmographics | W-shaped | Last touch | Lead source |
+|---|---:|---:|---:|---:|---:|---:|
+| paid_search | 0.0723 | 0.0850 | 0.0835 | 0.1160 | 0.0295 | 0.0675 |
+| linkedin | 0.0617 | 0.0706 | 0.0941 | 0.0493 | 0.0175 | 0.0637 |
+| content | 0.1719 | 0.1567 | 0.1442 | 0.1663 | 0.0326 | 0.1654 |
+| events | 0.0366 | 0.0222 | 0.0196 | 0.0278 | 0.0028 | 0.0577 |
+| sdr | 0.0592 | 0.1087 | 0.1439 | 0.2243 | 0.0310 | 0.1875 |
+| partner | 0.0233 | 0.0544 | 0.0369 | 0.0385 | 0.0056 | 0.0606 |
+| review | 0.0639 | 0.1231 | 0.0518 | 0.0340 | 0.0000 | 0.0630 |
+| organic | 0.0280 | 0.0438 | 0.0039 | 0.0692 | 0.0104 | 0.0716 |
+| plg | 0.0520 | 0.0521 | 0.0469 | 0.0591 | 0.0053 | 0.0586 |
+| abm | 0.0438 | 0.0630 | 0.0764 | 0.0343 | 0.0064 | 0.0278 |
+| llm_research | 0.1428 | 0.0873 | 0.1508 | 0.0019 | 0.0000 | 0.0027 |
+| wom | 0.0145 | 0 | 0 | 0.0064 | 0.0019 | 0.0101 |
+| podcast | 0.0148 | 0 | 0 | 0.0036 | 0.0000 | 0.0466 |
+| sales_ae | 0.2154 | 0.1332 | 0.1478 | 0.0857 | 0.8094 | 0.0709 |
+| ai_sourced | 0 | 0 | 0 | 0.0836 | 0.0475 | 0.0463 |
+
+ASCA's 90% posterior intervals at good tracking, pipeline, are in `results/b2b/intervals.csv`. The chart is `results/b2b/tracking_sweep.png`.
+
+![Average absolute error against tracking quality](results/b2b/tracking_sweep.png)
+
+### Assumptions and limitations
+
+- The simulation uses the same saturated-exposure, logistic, latent-agent family the estimator assumes. Half-life (45 days) and saturation scale (1) are treated as known. Errors on a different family would be larger. The consumer v0 write-up makes the same point about its own benchmark.
+- The gold panel does not degrade with production tracking. A real measurement study can be run that way; it is also an optimistic assumption if the panel is just "the best cookies."
+- MQA and SQL are timestamps for the path rules, not structural stages. There is no continuous-time hazard, so touches are not censored at a random conversion time. Every marketing touch is before day 110 by construction.
+- Unidentified channels are reported as a point mass at 0. That understates uncertainty. Coverage on the full channel list falls for that reason, and the identified-channel coverage is the one that speaks to calibration where the model has a signal.
+- NUTS used 50 draws after 100 warmup steps. Quantiles of channel shares from 50 draws are coarse. Ablations have no intervals.
+- Revenue shares for sales are the hardest structural piece. Even with an effort score, near-perfect tracking put sales at 0.1526 against a truth of 0.2154, and the 90% interval [0.0458, 0.1808] did not cover the truth. Path rules miss in the other direction: last touch's revenue MaxAE is 0.6359 at near-perfect tracking and 0.5940 at good tracking, which is the sales column.
+- No public B2B ground truth was available to confirm any of this outside the simulation.
+
+### Files added for B2B
+
+- `b2b/`: simulation, observation layer, truth, baselines, model.
+- `run_b2b.py`: one seeded run, four tracking levels, writes `results/b2b/`.
+- `data/b2b/`: accounts, contacts, true touches, the good-tracking observed touches, true exposures.
+- `results/b2b/scores.csv`, `shares.csv`, `intervals.csv`, `identification.csv`, `summary.json`, `scores.md`, `tracking_sweep.png`.
+
+---
+
+## Consumer v0 technical record
 
 ### The model
 
