@@ -112,42 +112,42 @@ There is no public B2B, account-level, multi-touch dataset with causal ground tr
 
 ### The account-level model
 
-An account \(a\) has firmographics \(Z_a\): ICP fit, intent, an existing-relationship flag, and segment indicators for mid-market and enterprise. Contacts carry roles. Role weights are economic buyer 1.30, champion 1.15, technical evaluator 0.80, end user 0.40. Marketing exposure is the role-weighted, decayed sum of touches before the decision date (day 110), with half-life 45 days:
+An account $a$ has firmographics $`Z_a`$: ICP fit, intent, an existing-relationship flag, and segment indicators for mid-market and enterprise. Contacts carry roles. Role weights are economic buyer 1.30, champion 1.15, technical evaluator 0.80, end user 0.40. Marketing exposure is the role-weighted, decayed sum of touches before the decision date (day 110), with half-life 45 days:
 
-\[
+$$
 E_{ac} = \sum_{\text{touches of } c} w_{\text{role}} \exp\left(-\frac{\ln 2}{45}(110 - t)\right), \qquad s_{ac} = \frac{E_{ac}}{1 + E_{ac}}.
-\]
+$$
 
-A latent agent \(A\) (the buyer used an assistant to build the shortlist) has
+A latent agent $A$ (the buyer used an assistant to build the shortlist) has
 
-\[
+$$
 \operatorname{logit} P(A=1 \mid s, Z) = a_0 + g \cdot s_{\text{agent}} + z_A \cdot Z,
-\]
+$$
 
-with loadings on content, review sites, LLM research, and podcasts. The AI-executed demo flag \(M\) is a descendant: it fires only if \(A=1\) and the account becomes an opportunity, with probability 0.42. IAB class is then human-owned (\(A=0\)), AI-assisted (\(A=1\), no executed demo), or AI-executed (\(M=1\)). \(M\) is a proxy in the likelihood. It is not an exposure, except in the misuse ablation.
+with loadings on content, review sites, LLM research, and podcasts. The AI-executed demo flag $M$ is a descendant: it fires only if $A=1$ and the account becomes an opportunity, with probability 0.42. IAB class is then human-owned ($A=0$), AI-assisted ($A=1$, no executed demo), or AI-executed ($M=1$). $M$ is a proxy in the likelihood. It is not an exposure, except in the misuse ablation.
 
-Opportunity and win, with \(A\) marginalized:
+Opportunity and win, with $A$ marginalized:
 
-\[
+```math
 \begin{aligned}
-P(Y=1 \mid s, Z) &= (1-\pi)\,\sigma(\eta_Y) + \pi\,\sigma(\eta_Y + d_Y), \\
+P(Y=1 \mid s, Z) &= (1-\pi)\,\sigma(\eta_Y) + \pi\,\sigma(\eta_Y + d_Y), \\ 
 P(W=1 \mid Y=1, s, Z, s_{\text{sales}}) &= (1-\pi)\,\sigma(\eta_W) + \pi\,\sigma(\eta_W + d_W).
 \end{aligned}
-\]
+```
 
-\(\eta_Y\) does not include sales. \(\eta_W\) includes \(\delta \cdot s_{\text{sales}}\). Sales intensity has a firmographic part and a large idiosyncratic part, so \(\delta\) is not the same coefficient as ICP. Post-decision calls are what the path rules count. The win likelihood uses a CRM effort score, a noisy reading of that intensity on opportunities the CRM recorded. Pipeline value of a coalition is \(\mathrm{ACV} \times P(Y=1 \mid do)\). Revenue value is \(\mathrm{ACV} \times P(Y=1 \mid do) \times P(W=1 \mid Y=1, do)\). Credit is the exact Shapley value of that function over the 14 channels (13 marketing channels plus sales). Shares are the channels' fractions of total incremental dollars. `ai_sourced` is scored as well and has truth 0.
+$`\eta_Y`$ does not include sales. $`\eta_W`$ includes $`\delta \cdot s_{\text{sales}}`$. Sales intensity has a firmographic part and a large idiosyncratic part, so $\delta$ is not the same coefficient as ICP. Post-decision calls are what the path rules count. The win likelihood uses a CRM effort score, a noisy reading of that intensity on opportunities the CRM recorded. Pipeline value of a coalition is $\mathrm{ACV} \times P(Y=1 \mid do)$. Revenue value is $\mathrm{ACV} \times P(Y=1 \mid do) \times P(W=1 \mid Y=1, do)$. Credit is the exact Shapley value of that function over the 14 channels (13 marketing channels plus sales). Shares are the channels' fractions of total incremental dollars. `ai_sourced` is scored as well and has truth 0.
 
-The fitted model is this same two-equation SCM. Channel effects, agent loadings, and \(\delta\) are constrained to be non-negative. Priors are \(\mathcal{N}(0, 5^2)\) on intercepts, \(\mathcal{N}(0, 2^2)\) on effects, and \(\mathcal{N}(0, 1.5^2)\) on the proxy log-odds. The full model at each tracking level was sampled with NUTS in NumPyro: 100 warmup steps, 50 draws, one chain, 0 divergences. Ablations (no firmographics, touch log only, and the misuse that puts the AI-sourced flag in the opportunity equation) are MAP only, so they have no posterior intervals.
+The fitted model is this same two-equation SCM. Channel effects, agent loadings, and $\delta$ are constrained to be non-negative. Priors are $\mathcal{N}(0, 5^2)$ on intercepts, $\mathcal{N}(0, 2^2)$ on effects, and $\mathcal{N}(0, 1.5^2)$ on the proxy log-odds. The full model at each tracking level was sampled with NUTS in NumPyro: 100 warmup steps, 50 draws, one chain, 0 divergences. Ablations (no firmographics, touch log only, and the misuse that puts the AI-sourced flag in the opportunity equation) are MAP only, so they have no posterior intervals.
 
 ### Imperfect tracking
 
-The truth is simulated once. Four production logs are then drawn with quality \(q \in \{1.00, 0.72, 0.42, 0.18\}\) (near perfect, good, degraded, heavy). A true touch of channel \(c\) is kept with probability \(\text{base}_c \times (\text{floor} + (1-\text{floor}) q)\). Floors are 0.08 for cookie channels, 0.30 for offline, 0.80 for CRM-native channels (SDR, partner, product-led, sales), and 0 for dark channels. Kept touches match the right account with probability \(0.50 + 0.45q\), land on a random wrong account with probability \(0.06(1-q)\), and are otherwise dropped. The lead-source field falls back to a biased self-report (events, SDR, podcasts, reviews, and a ChatGPT label) with probability \(0.25 + 0.55(1-q)\). MQA dates are often missing and late. Opportunity and win flags are dropped with probabilities that rise as \(q\) falls. LinkedIn and ABM also emit a noisy account-level impression total; the noise grows as \(q\) falls.
+The truth is simulated once. Four production logs are then drawn with quality $`q \in \{1.00, 0.72, 0.42, 0.18\}`$ (near perfect, good, degraded, heavy). A true touch of channel $c$ is kept with probability $`\text{base}_c \times (\text{floor} + (1-\text{floor}) q)`$. Floors are 0.08 for cookie channels, 0.30 for offline, 0.80 for CRM-native channels (SDR, partner, product-led, sales), and 0 for dark channels. Kept touches match the right account with probability $0.50 + 0.45q$, land on a random wrong account with probability $0.06(1-q)$, and are otherwise dropped. The lead-source field falls back to a biased self-report (events, SDR, podcasts, reviews, and a ChatGPT label) with probability $0.25 + 0.55(1-q)$. MQA dates are often missing and late. Opportunity and win flags are dropped with probabilities that rise as $q$ falls. LinkedIn and ABM also emit a noisy account-level impression total; the noise grows as $q$ falls.
 
 On a 10% gold panel the production exposure and the true exposure are both observed. That panel is used only to fit, per channel,
 
-\[
+$$
 E^{\text{true}} \approx \alpha + \beta E^{\text{obs}} + \gamma E^{\text{agg}} + \theta \cdot Z
-\]
+$$
 
 and to apply the fit to every account. It is not copied into the outcome regression as the true dose. Randomized holdouts (8% of accounts for ABM, a disjoint 8% for LLM research) set that channel's reconstructed exposure to 0. A channel whose gold-panel keep rate is below 0.15, and which has neither an impression total nor the LLM holdout, is set to zero exposure and called unidentified. In this run that is:
 
@@ -160,7 +160,7 @@ and to apply the fit to every account. It is not copied into the outcome regress
 | LLM research | holdout, not the touch log | holdout | holdout | holdout |
 | SDR, partner, product-led, events | calibrated touch log | calibrated touch log | calibrated touch log | calibrated touch log |
 
-Keep rates in parentheses are the gold-panel estimates \(p\) from `results/b2b/identification.csv`. The touch log for LLM research is never used, even when a few referrals survive (estimated keep rate 0.0520 at near-perfect tracking).
+Keep rates in parentheses are the gold-panel estimates $p$ from `results/b2b/identification.csv`. The touch log for LLM research is never used, even when a few referrals survive (estimated keep rate 0.0520 at near-perfect tracking).
 
 Unidentified channels get a point share of 0 and a posterior interval that collapses to 0, because the value function does not depend on a coefficient that multiplies a column of zeros. That interval is not a calibrated statement of ignorance. Overall 90% coverage and coverage on identified channels are both reported. At heavy tracking the overall pipeline coverage is 0.4667 and the identified-channel coverage is 0.7500.
 
@@ -177,15 +177,15 @@ All of these see only the production log for that tracking level. They do not se
 - **W-shaped.** 30% first touch, 30% the touch nearest the CRM MQA date, 30% last touch before day 110, 10% across the other touches.
 - **Z-shaped / full path.** 20% on first, lead, opportunity, and last touch, and 20% across the rest.
 - **Linear and time-decay.** Time-decay uses the 45-day half-life, which matches the simulation and favors that rule.
-- **Markov removal and set-rate Shapley.** The v0 implementations, on the observed path, with per-account credit dollar-weighted. Set-rate Shapley uses \(v(\emptyset) = 0\).
+- **Markov removal and set-rate Shapley.** The v0 implementations, on the observed path, with per-account credit dollar-weighted. Set-rate Shapley uses $v(\emptyset) = 0$.
 
-The touch-only ASCA ablation is the same outcome model fit to raw observed exposure, with no calibration, no impression totals, and no holdout column. The no-firmographics ablation keeps the measurement layer and drops \(Z\) from the outcome equations.
+The touch-only ASCA ablation is the same outcome model fit to raw observed exposure, with no calibration, no impression totals, and no holdout column. The no-firmographics ablation keeps the measurement layer and drops $Z$ from the outcome equations.
 
 ### Simulation
 
 `b2b/simulate.py` documents the coefficients. Marketing touches are Poisson, with extra rate for SDR, ABM, and LinkedIn on high-ICP, high-intent, and enterprise accounts. ABM is suppressed on its holdout and LLM research on its holdout, before any outcomes are drawn. Opportunity and win are the two structural stages. MQA and SQL dates are operational timestamps for the path rules (MQA is the day of the second marketing touch; SQL is seven days before the decision on opportunities). They are not extra structural equations. A continuous-time hazard is not fit. The decision date is fixed at day 110 so "before the opportunity" is well defined; close is day 160 for wins. The window is 180 days.
 
-Ground-truth pipeline share for sales is 0 (numerical value \(1.7 \times 10^{-17}\) in this run). Incremental dollars, summing Shapley over accounts, were 22,612,563.95 of pipeline and 16,713,952.70 of revenue. IAB counts across all accounts: human-owned 2,037, AI-assisted 1,588, AI-executed 375.
+Ground-truth pipeline share for sales is 0 (numerical value $1.7 \times 10^{-17}$ in this run). Incremental dollars, summing Shapley over accounts, were 22,612,563.95 of pipeline and 16,713,952.70 of revenue. IAB counts across all accounts: human-owned 2,037, AI-assisted 1,588, AI-executed 375.
 
 Committed tables, regenerated by the script: `data/b2b/accounts.parquet`, `contacts.parquet`, `touches_true.parquet`, `touches_observed_good.parquet` (the good tracking log only; the other three logs are redrawn from the seed), and `exposure_true.parquet`.
 
@@ -303,12 +303,12 @@ ASCA v0 (`asca/model.py`) is a structural causal model per journey $j$ and chann
 - **Outcome** $Y$: conversion.
 - **Proxy** $M$ (optional): an observed AI-executed checkout. $M$ is a descendant of $A$ and $Y$. It is never an exposure.
 
-$$
+```math
 \begin{aligned}
-\operatorname{logit} P(A=1 \mid X, Z) &= a_0 + g \cdot s + z_A \cdot Z \\
+\operatorname{logit} P(A=1 \mid X, Z) &= a_0 + g \cdot s + z_A \cdot Z \\ 
 \operatorname{logit} P(Y=1 \mid X, A, Z) &= b_0 + b \cdot s + d \cdot A + z_Y \cdot Z
 \end{aligned}
-$$
+```
 
 $s$ is saturated exposure, defined below. The benchmark has no agent node. The simulation does.
 
@@ -316,23 +316,23 @@ $s$ is saturated exposure, defined below. The benchmark has no agent node. The s
 
 Half-life $h$ and saturation scale $\kappa$ are free parameters.
 
-$$
+```math
 E_{jc}(h) = \sum_{\text{touches of } c} \exp\!\left(-\frac{\ln 2}{h}\,(T_{\mathrm{end}} - t)\right)
-$$
+```
 
 $$
 s_{jc} = \frac{E_{jc}}{\kappa + E_{jc}}
 $$
 
-Outcomes are evaluated at $T_{\mathrm{end}} = 720\,\mathrm{h}$, because the benchmark has no conversion timestamps. The benchmark's own decay uses a fixed half-life of $168\,\mathrm{h}$ inside the same window. See [Data](#data).
+Outcomes are evaluated at $`T_{\mathrm{end}} = 720\,\mathrm{h}`$, because the benchmark has no conversion timestamps. The benchmark's own decay uses a fixed half-life of $`168\,\mathrm{h}`$ inside the same window. See [Data](#data).
 
 #### Likelihood, with $A$ marginalized
 
-$A$ is latent and is marginalized out of the likelihood. With $\pi = P(A=1 \mid X, Z)$ and $\eta = b_0 + b \cdot s + z_Y \cdot Z$,
+$A$ is latent and is marginalized out of the likelihood. With $\pi = P(A=1 \mid X, Z)$ and $`\eta = b_0 + b \cdot s + z_Y \cdot Z`$,
 
-$$
+```math
 P(Y=1 \mid X, Z) = (1-\pi)\,\sigma(\eta) + \pi\,\sigma(\eta + d)
-$$
+```
 
 and $P(Y=0 \mid X, Z)$ is the complementary mixture. If the agent node is turned off, the likelihood is ordinary logistic regression of $Y$ on $s$ and $Z$.
 
@@ -340,15 +340,15 @@ and $P(Y=0 \mid X, Z)$ is the complementary mixture. If the agent node is turned
 
 The optional proxy is
 
-$$
+```math
 M \mid Y=1,\, A \sim \mathrm{Bernoulli}(q \cdot A)
-$$
+```
 
 $M$ is the observed AI-executed checkout. Because it is a descendant of $A$ and $Y$, conditioning on it as if it were a marketing exposure is a post-treatment error. That misuse is one of the reported ablations: it is about as bad as last-click. With the proxy in the likelihood, a conversion with $M=1$ is attributed only to paths with $A=1$, since $P(M=1 \mid A=0) = 0$ under this specification.
 
 #### Inference
 
-MAP with weakly informative Gaussian priors: $\mathcal{N}(0, 2^2)$ on effects, $\mathcal{N}(0, 5^2)$ on intercepts, $\log h \sim \mathcal{N}(\log 100,\, 2^2)$, and $\log \kappa \sim \mathcal{N}(0,\, 2^2)$.
+MAP with weakly informative Gaussian priors: $\mathcal{N}(0, 2^2)$ on effects, $\mathcal{N}(0, 5^2)$ on intercepts, $`\log h \sim \mathcal{N}(\log 100,\, 2^2)`$, and $`\log \kappa \sim \mathcal{N}(0,\, 2^2)`$.
 
 Uncertainty is a Laplace approximation. The Hessian is finite-differenced. Reported intervals use 200 posterior draws. Laplace is a Gaussian approximation, not MCMC. PyMC and numpyro were not used. The intervals reflect parameter uncertainty only, and they ignore the model-selection step.
 
@@ -358,11 +358,11 @@ Uncertainty is a Laplace approximation. The Hessian is finite-differenced. Repor
 
 For each converting journey, the value of a coalition $S$ of channels is the expected outcome after intervening to keep that journey's exposures in $S$ and to set every other channel to zero, still conditioning on the journey's $Z$:
 
-$$
+```math
 v_j(S) = \mathbb{E}\!\left[Y \mid do(X_S = x_{jS},\, X_{-S} = 0),\, Z_j\right]
-$$
+```
 
-$\varphi_j$ is the exact Shapley value of $v_j$ over all $2^K$ coalitions. Rows are normalized to sum to 1 and then averaged across converting journeys. That is the same convention as the benchmark's `aggregate_true_contribution`: each converting journey counts equally.
+$`\varphi_j`$ is the exact Shapley value of $`v_j`$ over all $2^K$ coalitions. Rows are normalized to sum to 1 and then averaged across converting journeys. That is the same convention as the benchmark's `aggregate_true_contribution`: each converting journey counts equally.
 
 Incremental conversions are
 
@@ -389,10 +389,10 @@ Total shares are a different question. They come out about the same with or with
 Every baseline produces credit per converting journey. Each journey's credit is normalized to 1, then averaged, matching the ground-truth convention.
 
 - **Last-click, first-click, linear.**
-- **Time-decay:** half-life $168\,\mathrm{h}$, measured back from $t = 720\,\mathrm{h}$. That half-life equals the data-generating half-life, which helps time-decay.
+- **Time-decay:** half-life $`168\,\mathrm{h}`$, measured back from $`t = 720\,\mathrm{h}`$. That half-life equals the data-generating half-life, which helps time-decay.
 - **Position-based:** 40/20/40.
 - **Markov:** a first-order chain with removal effect. The aggregate share is the normalized removal effect. Per journey, the removal effect is spread across the channels present. That per-journey split is an approximation.
-- **Shapley-Zhao (counts):** $v(S) = \sum_{T \subseteq S} \mathrm{conv}(T)$. This reduces to an equal split across the distinct channels in a journey.
+- **Shapley-Zhao (counts):** $`v(S) = \sum_{T \subseteq S} \mathrm{conv}(T)`$. This reduces to an equal split across the distinct channels in a journey.
 - **Shapley set-CR:** for each converting journey, exact Shapley with $v(S)$ equal to the empirical conversion rate of journeys whose exact channel set is $S$. Here $v(\emptyset) = 0$, unseen sets count as 0, and negative values are clipped.
 
 ### Data
@@ -403,11 +403,11 @@ The scored subsample is 100,000 journeys stratified on `converted`, seed 7. That
 
 The data-generating process, checked in code, is
 
-$$
+```math
 p = \sigma\!\left(-3.2 + \sum_c w_c \cdot s(D_c)\right), \quad s(x) = \frac{x}{1+x}, \quad D_c = \sum \exp\!\left(-\frac{\ln 2}{168\,\mathrm{h}}\,(720 - t)\right)
-$$
+```
 
-This reproduces `conv_prob` to 6e-7. For every converting journey, $\sum_c \mathrm{gt\_shapley}_c = \mathrm{conv\_prob} - \sigma(-3.2)$, with error 5e-7.
+This reproduces `conv_prob` to 6e-7. For every converting journey, $`\sum_c \mathrm{gt\_shapley}_c = \mathrm{conv\_prob} - \sigma(-3.2)`$, with error 5e-7.
 
 Channel weights: paid_search 1.1, social 0.7, display 0.35, email 0.9, organic_search 0.8, direct 1.0, referral 0.5.
 
@@ -486,9 +486,9 @@ All 7 intervals contain the truth. The bootstrap intervals for Markov cover only
 | direct | [0.101, 0.105] | [0.093, 0.120] | [0.085, 0.268] | [0.096, 0.116] |
 | referral | [0.074, 0.079] | [0.063, 0.090] | [-0.188, 0.118] | [0.047, 0.069] |
 
-**Fitted shape.** $h = 179\,\mathrm{h}$ (truth $168\,\mathrm{h}$), $\kappa = 0.81$ (truth 1). The estimated weights are smaller than the true ones but in the same order, because $\kappa$ and the $w_c$ trade off against each other.
+**Fitted shape.** $`h = 179\,\mathrm{h}`$ (truth $`168\,\mathrm{h}`$), $\kappa = 0.81$ (truth 1). The estimated weights are smaller than the true ones but in the same order, because $\kappa$ and the $`w_c`$ trade off against each other.
 
-**Incremental conversions.** ASCA implies 2,166 incremental conversions. The truth on the subsample, $\sum(\mathrm{conv\_prob} - \sigma(-3.2))$, is 2,113, so ASCA is 2.5% high.
+**Incremental conversions.** ASCA implies 2,166 incremental conversions. The truth on the subsample, $`\sum(\mathrm{conv\_prob} - \sigma(-3.2))`$, is 2,113, so ASCA is 2.5% high.
 
 **Agent node on this data.** The benchmark has no agent node. The latent-A model learns $d = 0.01$ with posterior sd 2.45, which is just the prior. It correctly collapses to the no-A model, and its shares are identical.
 
@@ -610,7 +610,7 @@ Channel shares (`results/simulation_shares.csv`):
 
 - **The benchmark favors ASCA by construction.** Its truth is Shapley over a logistic value function on decayed, saturated exposure. ASCA's parametric family (exponential adstock, Hill saturation, logistic link) contains that data-generating process, so ASCA is close to correctly specified there. $h$ and $\kappa$ were learned, not fixed, but the family matches. Expect larger errors on real data. The next step is to test against misspecified processes.
 - **The simulation is our own.** Its data-generating process shares ASCA's functional form, it has no unobserved confounding, and the agent proxy has no false positives. Those are optimistic assumptions.
-- **Identification.** No unobserved confounding given $Z$. Exposures are well defined and can be intervened on. The $do(X_c = 0)$ contrast removes all of a channel's exposure. Outcomes are evaluated at $T_{\mathrm{end}} = 720\,\mathrm{h}$. There is no interference between users.
+- **Identification.** No unobserved confounding given $Z$. Exposures are well defined and can be intervened on. The $`do(X_c = 0)`$ contrast removes all of a channel's exposure. Outcomes are evaluated at $`T_{\mathrm{end}} = 720\,\mathrm{h}`$. There is no interference between users.
 - **Dark channels need an exposure log.** ASCA can credit a dark channel only if its exposure is measured somehow: impression logs, assignment, or geo or flight variation. With no exposure data, no observational method can credit it. That case needs experiments or a marketing-mix model.
 - **The approximations are rough.** Laplace is not MCMC. Finite-difference gradients made the simulation take about 27 minutes.
 - **Baseline conventions.** Markov's per-journey credit spreads the removal effect across channels present. Set-CR uses $v(\emptyset) = 0$. Time-decay's half-life equals the data-generating half-life.
