@@ -121,7 +121,7 @@ $$
 A latent agent $A$ (the buyer used an assistant to build the shortlist) has
 
 $$
-\operatorname{logit} P(A=1 \mid s, Z) = a_0 + g \cdot s_{\text{agent}} + z_A \cdot Z,
+\mathrm{logit} P(A=1 \mid s, Z) = a_0 + g \cdot s_{\text{agent}} + z_A \cdot Z,
 $$
 
 with loadings on content, review sites, LLM research, and podcasts. The AI-executed demo flag $M$ is a descendant: it fires only if $A=1$ and the account becomes an opportunity, with probability 0.42. IAB class is then human-owned ($A=0$), AI-assisted ($A=1$, no executed demo), or AI-executed ($M=1$). $M$ is a proxy in the likelihood. It is not an exposure, except in the misuse ablation.
@@ -305,8 +305,8 @@ ASCA v0 (`asca/model.py`) is a structural causal model per journey $j$ and chann
 
 ```math
 \begin{aligned}
-\operatorname{logit} P(A=1 \mid X, Z) &= a_0 + g \cdot s + z_A \cdot Z \\ 
-\operatorname{logit} P(Y=1 \mid X, A, Z) &= b_0 + b \cdot s + d \cdot A + z_Y \cdot Z
+\mathrm{logit} P(A=1 \mid X, Z) &= a_0 + g \cdot s + z_A \cdot Z \\ 
+\mathrm{logit} P(Y=1 \mid X, A, Z) &= b_0 + b \cdot s + d \cdot A + z_Y \cdot Z
 \end{aligned}
 ```
 
